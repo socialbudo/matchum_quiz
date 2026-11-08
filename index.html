@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>한국어 맞춤법 150 퀴즈 암기장</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: #f8fafc;
+        }
+        .blank-box {
+            transition: all 0.2s ease-in-out;
+        }
+        .blank-box.active {
+            border-color: #4f46e5;
+            background-color: #eef2ff;
+            color: #4f46e5;
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15);
+            animation: pulse-border 1.5s infinite;
+        }
+        @keyframes pulse-border {
+            0%, 100% { border-color: #4f46e5; }
+            50% { border-color: #818cf8; }
+        }
+        .blank-box.solved-correct {
+            border-color: #10b981;
+            background-color: #ecfdf5;
+            color: #047857;
+        }
+        .blank-box.solved-wrong {
+            border-color: #ef4444;
+            background-color: #fef2f2;
+            color: #b91c1c;
+        }
+        .key-badge {
+            box-shadow: 0 2px 0 rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col justify-between">
+
+    <!-- Header & Navigation -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-spell-check text-indigo-600 text-2xl"></i>
+                <h1 class="text-xl font-bold text-slate-900 tracking-tight">맞춤법 150 마스터</h1>
+            </div>
+            
+            <!-- Mode Tabs -->
+            <div class="flex items-center bg-slate-100 p-1 rounded-xl text-sm font-semibold">
+                <button id="tab-all" onclick="changeMode('all')" class="px-3 py-1.5 rounded-lg text-indigo-600 bg-white shadow-sm transition-all">
+                    전체 (<span id="cnt-all">150</span>)
+                </button>
+                <button id="tab-wrong" onclick="changeMode('wrong')" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all flex items-center gap-1.5">
+                    <span>오답노트</span>
+                    <span id="cnt-wrong" class="bg-rose-100 text-rose-600 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+                </button>
+                <button id="tab-bookmark" onclick="changeMode('bookmark')" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all flex items-center gap-1.5">
+                    <span>즐겨찾기</span>
+                    <span id="cnt-bookmark" class="bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+                </button>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex items-center gap-2">
+                <label class="flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-lg hover:bg-slate-100">
+                    <input type="checkbox" id="toggle-shuffle" onchange="toggleShuffle()" class="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+                    <span>랜덤 섞기</span>
+                </label>
+                <button onclick="resetData()" title="진도 초기화" class="text-xs text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="w-full bg-slate-100 h-2 relative overflow-hidden">
+            <div id="progress-bar" class="bg-indigo-600 h-full transition-all duration-300 w-0"></div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-3xl w-full mx-auto px-4 py-6 flex-1 flex flex-col justify-center">
+
+        <!-- Info / Empty State -->
+        <div id="empty-state" class="hidden text-center py-16 bg-white rounded-2xl border border-slate-200 shadow-sm">
+            <i class="fa-solid fa-circle-check text-5xl text-emerald-500 mb-4"></i>
+            <h2 id="empty-title" class="text-2xl font-bold text-slate-800 mb-2">모든 문제를 완료했습니다!</h2>
+            <p id="empty-desc" class="text-slate-500 text-sm">오답노트가 비어 있습니다. 참 잘했어요!</p>
+            <button onclick="changeMode('all')" class="mt-6 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm transition-all shadow-md">
+                전체 문제 풀어보기
+            </button>
+        </div>
+
+        <!-- Quiz Card Box -->
+        <div id="quiz-card" class="bg-white rounded-3xl border border-slate-200/80 shadow-xl p-6 sm:p-10 relative flex flex-col justify-between min-h-[380px]">
+            
+            <!-- Card Header: Number & Bookmark -->
+            <div class="flex justify-between items-center mb-6">
+                <div class="flex items-center gap-2">
+                    <span id="quiz-idx" class="bg-slate-900 text-white font-black text-xs px-2.5 py-1 rounded-md">Q.1</span>
+                    <span id="mode-badge" class="bg-indigo-50 text-indigo-700 font-bold text-xs px-2.5 py-1 rounded-md border border-indigo-100">전체 모드</span>
+                </div>
+                <button id="btn-bookmark" onclick="toggleCurrentBookmark()" class="text-2xl text-slate-300 hover:text-amber-400 transition-colors">
+                    <i class="fa-solid fa-star"></i>
+                </button>
+            </div>
+
+            <!-- Quiz Statement Text -->
+            <div class="my-auto py-4 text-center">
+                <div id="sentence-container" class="text-2xl sm:text-3xl font-extrabold leading-relaxed text-slate-800 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+                    <!-- Dynamic Sentence with Blanks -->
+                </div>
+            </div>
+
+            <!-- Quiz Option Buttons Area -->
+            <div class="mt-8 pt-6 border-t border-slate-100">
+                <div class="text-xs text-center font-bold text-slate-400 uppercase tracking-wider mb-3">정답 선택하기 (키보드 1, 2, 3 또는 0)</div>
+                <div id="options-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <!-- Dynamic Option Buttons -->
+                </div>
+            </div>
+
+            <!-- Explanation / Result Toast (Shows on Answer) -->
+            <div id="result-toast" class="hidden absolute left-4 right-4 bottom-4 bg-slate-900/95 text-white backdrop-blur-md rounded-2xl p-4 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3 border border-slate-700 animate-bounce-short z-10">
+                <div class="flex items-start gap-3">
+                    <div id="toast-icon" class="text-2xl mt-0.5"></div>
+                    <div>
+                        <div id="toast-status" class="font-bold text-base flex items-center gap-2"></div>
+                        <div id="toast-explanation" class="text-sm text-slate-300 font-medium mt-0.5"></div>
+                    </div>
+                </div>
+                <button id="btn-next" onclick="nextQuestion()" class="w-full sm:w-auto px-5 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2 shrink-0 shadow-lg">
+                    <span>다음 (Enter)</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer Guide -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-6">
+        <div class="max-w-4xl mx-auto px-4 text-center text-xs text-slate-400 font-medium flex flex-wrap justify-center gap-4">
+            <span><kbd class="px-1.5 py-0.5 bg-slate-100 border rounded font-mono text-slate-600">1</kbd> <kbd class="px-1.5 py-0.5 bg-slate-100 border rounded font-mono text-slate-600">2</kbd> 선택지</span>
+            <span><kbd class="px-1.5 py-0.5 bg-slate-100 border rounded font-mono text-slate-600">0</kbd> / <kbd class="px-1.5 py-0.5 bg-slate-100 border rounded font-mono text-slate-600">Space</kbd> 복수표준어</span>
+            <span><kbd class="px-1.5 py-0.5 bg-slate-100 border rounded font-mono text-slate-600">Enter</kbd> 다음 문제</span>
+        </div>
+    </footer>
+
+    <!-- App Logic JavaScript -->
+    <script>
+        // 150 Full Dataset
+        const rawQuizData = [
+            { id: 1, text: "병이 얼른 {0} 좋겠다.", options: ["낫으면", "나으면"], answer: [1], note: "ㅅ 불규칙 활용 (낫다 -> 나으면)" },
+            { id: 2, text: "이 옷이 더 {0}하지?", options: ["문안", "무난"], answer: [1], note: "없을 무(無), 어려울 난(難)" },
+            { id: 3, text: "오늘은 {0} 숙제 다 할 거야.", options: ["반드시", "반듯이"], answer: [0], note: "'꼭'의 뜻일 때는 '반드시'" },
+            { id: 4, text: "왜 난리 {0}인지 모르겠네", options: ["법석", "법썩"], answer: [0], note: "된소리로 나더라도 ㄱ,ㅂ 받침 뒤는 원형대로" },
+            { id: 5, text: "머리를 {0} 잘랐어.", options: ["싹둑", "싹뚝"], answer: [0], note: "ㄱ 받침 뒤 된소리 표기 안 함" },
+            { id: 6, text: "{0} 기억이 났어.", options: ["언듯", "언뜻"], answer: [1], note: "언뜻이 표준어" },
+            { id: 7, text: "{0} 비빔밥", options: ["짭잘한", "짭짤한"], answer: [1], note: "짭짤하다가 올바른 표기" },
+            { id: 8, text: "김치를 {0}.", options: ["담갔다", "담궜다"], answer: [0], note: "'담그다'의 과거형은 '담갔다'" },
+            { id: 9, text: "맛있는 {0}", options: ["깍둑이", "깍두기", "깍뚜기"], answer: [1], note: "깍두기가 표준어" },
+            { id: 10, text: "국물에 물을 더 넣고 {0} 주세요.", options: ["졸여", "조려"], answer: [0], note: "액체의 양을 줄일 때는 '졸이다'" },
+            { id: 11, text: "직접 {0} 대추차", options: ["달인", "다린"], answer: [0], note: "약이나 차를 끓이는 것은 '달이다'" },
+            { id: 12, text: "장난감 {0}", options: ["오뚝이", "오뚜기"], answer: [0], note: "오뚝이가 표준어 (기업명 제외)" },
+            { id: 13, text: "오늘이 {0}지?", options: ["몇일", "몇 일", "며칠"], answer: [2], note: "'몇 일'은 없는 표기, 항상 '며칠'" },
+            { id: 14, text: "내가 가도 {0}?", options: ["돼", "되"], answer: [0], note: "'되어'의 줄임말 '돼'" },
+            { id: 15, text: "하면 {0}.", options: ["돼요", "되요"], answer: [0], note: "'되어요'의 줄임말 '돼요'" },
+            { id: 16, text: "내일 또 {0}.", options: ["뵈요", "봬요"], answer: [1], note: "'뵈어요'의 줄임말 '봬요'" },
+            { id: 17, text: "일이 잘 {0} 바란다.", options: ["되길", "돼길"], answer: [0], note: "'되기를'의 줄임말 '되길'" },
+            { id: 18, text: "성공할 확률인 {0}", options: ["성공률", "성공율"], answer: [0], note: "받침(ㄴ 제외) 뒤에는 '률'" },
+            { id: 19, text: "수학 {0}", options: ["백분율", "백분률"], answer: [0], note: "ㄴ 받침 뒤에는 '율'" },
+            { id: 20, text: "{0} / {1}", options: ["눈곱", "눈꼽"], options2: ["배곱", "배꼽"], answer: [0, 1], note: "눈곱(곱=진액) / 배꼽(된소리 표기)" },
+            { id: 21, text: "사건이 {0}.", options: ["얽히고섥히다", "얽히고설키다"], answer: [1], note: "얽히고설키다가 올바른 표준어" },
+            { id: 22, text: "맛있는 {0}", options: ["짜장면", "자장면"], answer: [-1], note: "둘 다 인정되는 복수표준어" },
+            { id: 23, text: "정부의 {0}", options: ["늑장 대응", "늦장 대응"], answer: [-1], note: "늑장/늦장 모두 복수표준어" },
+            { id: 24, text: "제 소개는 이 그림으로 {0}하겠습니다.", options: ["갈음", "가름"], answer: [0], note: "대체·교체한다는 뜻은 '갈음'" },
+            { id: 25, text: "{0} 한 시간 정도 걸려.", options: ["겉잡아서", "걷잡아서"], answer: [0], note: "겉으로 대강 셈할 때는 '겉잡다'" },
+            { id: 26, text: "따사로운 {0}", options: ["해님", "햇님"], answer: [0], note: "높임 접미사 '-님' 앞에는 사이시옷 불가" },
+            { id: 27, text: "운동을 시작한 지 {0}로 오 년.", options: ["해수", "햇수"], answer: [1], note: "해의 수를 뜻할 때는 '햇수'" },
+            { id: 28, text: "{0} / {1} / {2}", options: ["전세방", "전셋방"], options2: ["전세집", "전셋집"], options3: ["세방", "셋방"], answer: [0, 1, 1], note: "전세방(한자+한자X), 전셋집(순우리말 포함), 셋방(한자+한자 예외 6개 중 하나)" },
+            { id: 29, text: "사장님의 {0}", options: ["인사말", "인삿말"], answer: [0], note: "인사말이 올바른 표준어" },
+            { id: 30, text: "웃 어른께 {0}", options: ["존댓말", "존대말"], answer: [0], note: "존댓말이 올바른 표기" },
+            { id: 31, text: "행사 후 {0}", options: ["뒷풀이", "뒤풀이"], answer: [1], note: "거센소리(ㅍ) 앞에는 사이시옷 불가" },
+            { id: 32, text: "아름다운 {0}", options: ["오렌짓빛", "오렌지빛"], answer: [1], note: "외래어(오렌지) 뒤에는 사이시옷 불가" },
+            { id: 33, text: "{0} 겨우 이거야?", options: ["에걔", "애걔"], answer: [1], note: "애걔가 표준 감탄사" },
+            { id: 34, text: "나무가 {0} 뻗어 있었다.", options: ["멋드러지게", "멋들어지게"], answer: [1], note: "멋들어지게가 표준어" },
+            { id: 35, text: "{0} 들리는 소문에 의하면", options: ["간간이", "간간히"], answer: [0], note: "'가끔씩'의 의미는 '간간이'" },
+            { id: 36, text: "나도 {0} 생각해 봤어.", options: ["곰곰이", "곰곰히"], answer: [0], note: "곰곰이(부사)가 맞는 표현" },
+            { id: 37, text: "방을 {0} 정리하자.", options: ["깨끗이", "깨끗히"], answer: [0], note: "'ㅅ' 받침 뒤 부사 형성 접미사는 '이'" },
+            { id: 38, text: "{0} 공부하는 습관", options: ["틈틈이", "틈틈히"], answer: [0], note: "틈틈이가 표준어" },
+            { id: 39, text: "일을 {0} 않고 처리했다.", options: ["서슴지", "서슴치"], answer: [0], note: "기본형 '서슴다' -> 서슴지" },
+            { id: 40, text: "그건 앞뒤가 맞지 {0}.", options: ["안잖아", "않잖아"], answer: [1], note: "'아니하다'의 줄임말 '않다'" },
+            { id: 41, text: "{0} 운동장에서 뛰어놀았다.", options: ["널찍한", "넓직한"], answer: [0], note: "널찍한이 표준 표기" },
+            { id: 42, text: "그분은 {0} 성공하셨다.", options: ["일찍이", "일찌기"], answer: [0], note: "일찍이가 올바른 부사" },
+            { id: 43, text: "몸이 아파서 {0}.", options: ["어떻해", "어떡해"], answer: [1], note: "'어떻게 해'의 줄임말 '어떡해'" },
+            { id: 44, text: "오늘은 {0} 기분이 좋다.", options: ["왠지", "웬지"], answer: [0], note: "'왜인지'의 줄임말은 오직 '왠지'" },
+            { id: 45, text: "{0} 이렇게 일찍 왔어?", options: ["웬일인지", "왠일인지"], answer: [0], note: "'어찌 된 일'은 '웬일'" },
+            { id: 46, text: "정답을 {0}.", options: ["맞히다", "맞추다"], answer: [0], note: "적중의 의미는 '맞히다'" },
+            { id: 47, text: "친구와 서로 답을 {0}.", options: ["맞히다", "맞추다"], answer: [1], note: "비교하고 대조할 때는 '맞추다'" },
+            { id: 48, text: "화살을 과녁에 {0}.", options: ["맞히다", "맞추다"], answer: [0], note: "목표물에 닿게 하는 것은 '맞히다'" },
+            { id: 49, text: "아이에게 예방접종을 {0}.", options: ["맞히다", "맞추다"], answer: [0], note: "주사 등을 맞게 하는 것은 '맞히다'" },
+            { id: 50, text: "그는 나를 {0} 쳐다봤다.", options: ["지그시", "지긋이"], answer: [0], note: "슬그머니 힘을 가하는 모양은 '지그시'" },
+            { id: 51, text: "연세가 {0} 든 분", options: ["지그시", "지긋이"], answer: [1], note: "나이가 꽤 들어 묵직함은 '지긋이'" },
+            { id: 52, text: "액자를 {0} 걸어두었다.", options: ["반드시", "반듯이"], answer: [1], note: "'삐뚤어지지 않고 바르게'는 '반듯이'" },
+            { id: 53, text: "어깨에 가방을 {0}.", options: ["매다", "메다"], answer: [1], note: "어깨에 짊어지는 것은 '메다'" },
+            { id: 54, text: "풀린 신발끈을 {0}.", options: ["매다", "메다"], answer: [0], note: "매듭을 묶는 것은 '매다'" },
+            { id: 55, text: "상대의 화를 {0}.", options: ["돋우다", "돋구다"], answer: [0], note: "감정/입맛을 올라오게 하는 것은 '돋우다'" },
+            { id: 56, text: "시험공부로 밤을 {0}.", options: ["새우다", "세우다"], answer: [0], note: "잠을 자지 않고 밤을 보냄은 '새우다'" },
+            { id: 57, text: "멋진 건물을 {0}.", options: ["새우다", "세우다"], answer: [1], note: "구조물 등을 건립함은 '세우다'" },
+            { id: 58, text: "나에게 한 가지 {0}이 있어.", options: ["바람", "바램"], answer: [0], note: "소원은 '바람' (색이 바래다 -> 바램)" },
+            { id: 59, text: "합격하길 {0}.", options: ["바래", "바라"], answer: [1], note: "기본형 '바라다' -> 바라" },
+            { id: 60, text: "길가에 굴러다니는 {0}", options: ["돌멩이", "돌맹이"], answer: [0], note: "돌멩이가 표준어" },
+            { id: 61, text: "{0}가 떨어진다.", options: ["정나미", "정내미"], answer: [0], note: "정나미가 올바른 표준어" },
+            { id: 62, text: "돈 가지고 {0} 구굴지 마라.", options: ["째째하게", "쩨쩨하게"], answer: [1], note: "쩨쩨하게가 맞는 표기" },
+            { id: 63, text: "작년보다 1년 전인 {0}", options: ["재작년", "제작년"], answer: [0], note: "재작년(再昨年)이 올바른 표기" },
+            { id: 64, text: "약속 시간까지 시간을 {0}.", options: ["때우다", "떼우다"], answer: [0], note: "시간을 보내는 것은 '때우다'" },
+            { id: 65, text: "고기 냄새가 옷에 {0}.", options: ["배었다", "베었다"], answer: [0], note: "스며드는 것은 '배다'" },
+            { id: 66, text: "아이가 {0} 울음을 그쳤다.", options: ["금새", "금세"], answer: [1], note: "'금시에'의 줄임말 '금세'" },
+            { id: 67, text: "{0} 입맛이 없다.", options: ["요세", "요새"], answer: [1], note: "'요사이'의 줄임말 '요새'" },
+            { id: 68, text: "마당의 잔디를 {0}.", options: ["깍다", "깎다"], answer: [1], note: "깎다가 올바른 표기" },
+            { id: 69, text: "옷에 흙이 {0}.", options: ["묻다", "뭍다"], answer: [0], note: "묻다가 표준어 ('뭍'은 육지)" },
+            { id: 70, text: "보물을 땅에 {0}.", options: ["묻다", "뭍다"], answer: [0], note: "매장함은 '묻다'" },
+            { id: 71, text: "길을 선생님께 {0}.", options: ["묻다", "뭍다"], answer: [0], note: "질문함은 '묻다'" },
+            { id: 72, text: "{0} / {1}", options: ["육계장", "육개장"], options2: ["닭계장", "닭개장"], answer: [1, 1], note: "개장국에서 유래했으므로 육개장/닭개장" },
+            { id: 73, text: "푹신한 {0}를 베다", options: ["베개", "베게"], answer: [0], note: "베개가 맞는 표기" },
+            { id: 74, text: "보글보글 김치{0}", options: ["찌개", "찌게"], answer: [0], note: "찌개가 올바른 표기" },
+            { id: 75, text: "나는 {0}.", options: ["학생이에요", "학생이예요"], answer: [0], note: "받침 있는 체험 뒤에는 '이에요'" },
+            { id: 76, text: "너는 {0}.", options: ["바보에요", "바보예요"], answer: [1], note: "받침 없는 체험 뒤에는 '예요'" },
+            { id: 77, text: "그건 사실이 {0}.", options: ["아니에요", "아니예요"], answer: [0], note: "'아니다' 뒤에는 '에요' (아니에요)" },
+            { id: 78, text: "진작 와 {0}!", options: ["볼걸", "볼껄"], answer: [0], note: "후회를 나타내는 종결어미 '-ㄹ걸'" },
+            { id: 79, text: "시험을 잘 {0}.", options: ["치렀습니다", "치뤘습니다"], answer: [0], note: "기본형 '치르다' -> 치렀습니다" },
+            { id: 80, text: "문을 꼭 {0} 주세요.", options: ["잠가", "잠궈"], answer: [0], note: "기본형 '잠그다' -> 잠가" },
+            { id: 81, text: "정말 {0}에 만나네!", options: ["오랫만에", "오랜만에"], answer: [1], note: "'오랜 시간 만에'의 의미 '오랜만에'" },
+            { id: 82, text: "운동하다 체력이 {0}.", options: ["달려서", "딸려서"], answer: [0], note: "수준이나 힘이 미치지 못함은 '달리다'" },
+            { id: 83, text: "동생 {0}를 다 하다.", options: ["뒤치다꺼리", "뒤치닥거리"], answer: [0], note: "뒤치다꺼리가 표준어" },
+            { id: 84, text: "혼자서 {0} 말하다.", options: ["구시렁거리다", "궁시렁거리다"], answer: [0], note: "구시렁거리다가 표준어" },
+            { id: 85, text: "돈이 {0} 남았어?", options: ["얼마큼", "얼만큼"], answer: [0], note: "'얼마만큼'의 줄임말 '얼마큼'" },
+            { id: 86, text: "성격이 {0}하다.", options: ["두리뭉실", "두루뭉술"], answer: [-1], note: "두리뭉실/두루뭉술 모두 복수표준어" },
+            { id: 87, text: "약속이 {0} 났다.", options: ["파토", "파투"], answer: [1], note: "화투 용어에서 유래한 '파투'가 표준어" },
+            { id: 88, text: "식사 후 {0}를 하다.", options: ["설거지", "설겆이"], answer: [0], note: "설거지가 표준어" },
+            { id: 89, text: "{0} 얼굴의 젋은이", options: ["앳된", "애띤"], answer: [0], note: "앳된이 표준어" },
+            { id: 90, text: "이 {0}야 정신 차려!", options: ["임마", "인마"], answer: [1], note: "'이 사람아'의 줄임말 '인마'" },
+            { id: 91, text: "가슴 소풍의 {0}", options: ["설레임", "설렘"], answer: [1], note: "기본형 '설레다'의 명사형은 '설렘'" },
+            { id: 92, text: "물건을 {0} 다루지 마라.", options: ["허투루", "허투로"], answer: [0], note: "허투루가 표준 부사" },
+            { id: 93, text: "그 이야기는 정말 {0}하다.", options: ["황당무계", "황당무게"], answer: [0], note: "황당무계(荒唐無稽)가 맞음" },
+            { id: 94, text: "친구에게 {0} 물어보았다.", options: ["넌지시", "넌즈시"], answer: [0], note: "넌지시가 올바른 표기" },
+            { id: 95, text: "과일을 {0} 먹었다.", options: ["껍질째", "껍질채"], answer: [0], note: "그대로의 상태는 접사 '-째'" },
+            { id: 96, text: "지금이 {0} 공부할 나이다.", options: ["한참", "한창"], answer: [1], note: "왕성한 시기는 '한창'" },
+            { id: 97, text: "행동이 {0}하다.", options: ["어리버리하다", "어리바리하다"], answer: [1], note: "어리바리하다가 올바른 표준어" },
+            { id: 98, text: "남을 {0} 하지 마라.", options: ["닦달하다", "닥달하다"], answer: [0], note: "닦달하다가 맞는 표기" },
+            { id: 99, text: "{0} 반말이야!", options: ["어따대고", "얻다 대고"], answer: [1], note: "'어디에다 대고'의 줄임말 '얻다 대고'" },
+            { id: 100, text: "과거를 {0} 생각하다.", options: ["곱씹다", "곰씹다"], answer: [0], note: "곱씹다가 표준어" },
+            { id: 101, text: "일방적으로 {0}.", options: ["밀어부치다", "밀어붙이다"], answer: [1], note: "밀어붙이다가 올바른 표준어" },
+            { id: 102, text: "편지를 우체통에 {0}.", options: ["부쳤다", "붙였다"], answer: [0], note: "우편을 보내는 것은 '부치다'" },
+            { id: 103, text: "바지 {0}이 닳다", options: ["무릎", "무릅"], answer: [0], note: "신체 부위는 '무릎'" },
+            { id: 104, text: "{0}이 넓다.", options: ["오지랖", "오지랍"], answer: [0], note: "오지랖이 맞는 표기" },
+            { id: 105, text: "책상을 새것으로 {0}하다.", options: ["갈음", "가름"], answer: [0], note: "대체함은 '갈음'" },
+            { id: 106, text: "{0} 한 시간 정도 걸린다.", options: ["겉잡아서", "걷잡아서"], answer: [0], note: "대강 추어올려 셈함은 '겉잡다'" },
+            { id: 107, text: "눈물이 {0} 수 없이 흐르다.", options: ["걷잡을", "겉잡을"], answer: [0], note: "거두어 다스리거나 억제함은 '걷잡다'" },
+            { id: 108, text: "쓸데없는 {0}를 늘어놓다.", options: ["넉두리", "넋두리"], answer: [1], note: "넋두리가 올바른 표기" },
+            { id: 109, text: "{0} 잘 정리해라.", options: ["아무튼", "아뭏든"], answer: [0], note: "아무튼이 표준어" },
+            { id: 110, text: "{0} 결과는 성공적이다.", options: ["어쨌든", "어쨋든"], answer: [0], note: "어쨌든이 표준어" },
+            { id: 111, text: "부모님 속을 {0} 마라.", options: ["썩이지", "썩히지"], answer: [0], note: "걱정/근심으로 속을 피폐하게 함은 '썩이다'" },
+            { id: 112, text: "경제 생태계를 {0} 놓았다.", options: ["결딴낸", "결단낸"], answer: [0], note: "살림이나 일을 망쳐버림은 '결딴내다'" },
+            { id: 113, text: "양심과 원칙을 {0}.", options: ["쫓아", "좇아"], answer: [1], note: "가치, 원칙, 꿈을 따름은 '좇다'" },
+            { id: 114, text: "흡연을 {0} 주십시오.", options: ["삼가해", "삼가"], answer: [1], note: "기본형 '삼가다' -> 삼가" },
+            { id: 115, text: "정말 황당하고 {0}.", options: ["어의없다", "어이없다"], answer: [1], note: "어이없다가 올바른 표기" },
+            { id: 116, text: "학생들에게 수학을 {0}.", options: ["가르치다", "가리키다"], answer: [0], note: "지식을 전수함은 '가르치다'" },
+            { id: 117, text: "신용카드 {0}일", options: ["결제일", "결재일"], answer: [0], note: "대금 정산 및 지불은 '결제'" },
+            { id: 118, text: "서류에 부장님 {0}를 받다.", options: ["결제", "결재"], answer: [1], note: "상사의 승인 서명은 '결재'" },
+            { id: 119, text: "참 {0}한 일이네.", options: ["희안하다", "희한하다"], answer: [1], note: "희한(稀罕)하다가 맞음" },
+            { id: 120, text: "{0} 같이 약속했다.", options: ["철석같이", "철썩같이"], answer: [0], note: "쇠와 돌처럼 굳게는 '철석같이'" },
+            { id: 121, text: "수술 후 {0}", options: ["후유증", "휴유증"], answer: [0], note: "후유증이 맞는 표기" },
+            { id: 122, text: "결혼식 {0}", options: ["부조금", "부주금"], answer: [0], note: "부조금이 올바른 표현" },
+            { id: 123, text: "{0} 안 갈 이유가 없다.", options: ["굳이", "구지"], answer: [0], note: "구개음화 표기 '굳이'" },
+            { id: 124, text: "나랑 {0} 하자.", options: ["연애", "연예"], answer: [0], note: "사랑하는 관계는 '연애(戀愛)'" },
+            { id: 125, text: "유명한 {0}", options: ["연예인", "연애인"], answer: [0], note: "대중예술인은 '연예인(演藝人)'" },
+            { id: 126, text: "수능의 {0} 문제", options: ["고난이도", "고난도"], answer: [1], note: "난도(난이도의 정도)가 높으므로 '고난도'" },
+            { id: 127, text: "실패하기 {0}이다.", options: ["십상이다", "쉽상이다"], answer: [0], note: "십상(십상팔구)이다가 맞음" },
+            { id: 128, text: "결국 큰 {0}이 났다.", options: ["사단", "사달"], answer: [1], note: "사고나 탈을 뜻할 때는 '사달'" },
+            { id: 129, text: "{0} 같은 박수가 터졌다.", options: ["우레", "우뢰"], answer: [0], note: "'천둥'의 순우리말은 '우레'" },
+            { id: 130, text: "전국에서 {0} 전문가", options: ["내로라하는", "내노라하는"], answer: [0], note: "내로라하는이 올바른 표준어" },
+            { id: 131, text: "모두의 평등을 {0}한다.", options: ["지양", "지향"], answer: [1], note: "목표로 삼아 나아감은 '지향'" },
+            { id: 132, text: "그가 나를 {0} 나도 그를 믿는다.", options: ["믿으므로", "믿음으로"], answer: [0], note: "까닭/원인은 어미 '-으므로'" },
+            { id: 133, text: "너와 나의 생각이 {0}.", options: ["다르다", "틀리다"], answer: [0], note: "같지 않음은 '다르다'" },
+            { id: 134, text: "오든지 {0} 마음대로 해.", options: ["하든지 말든지", "하던지 말던지"], answer: [0], note: "선택 어미는 '-든지'" },
+            { id: 135, text: "내가 너의 {0} 충고한다.", options: ["엄마로서", "엄마로써"], answer: [0], note: "자격이나 신분은 '로서'" },
+            { id: 136, text: "집에 {0} 전화해라.", options: ["도착하는 대로", "도착하는 데로"], answer: [0], note: "~하는 즉시는 의존명사 '대로'" },
+            { id: 137, text: "이건 나만 아는 비밀인{0} 둘이 사귄{1}.", options: ["대", "데"], options2: ["대", "데"], answer: [1, 0], note: "자기 경험/배경(-데) / 남에게 들은 말 전달(-대)" },
+            { id: 138, text: "{0} 수업 끝나고 보자.", options: ["있다가", "이따가"], answer: [1], note: "'조금 후에'의 뜻은 '이따가'" },
+            { id: 139, text: "가정이 {0} 났다.", options: ["풍비박산", "풍지박산"], answer: [0], note: "풍비박산(風飛雹散)이 올바른 사자성어" },
+            { id: 140, text: "{0}의 위기에 놓였다.", options: ["절체절명", "절대절명"], answer: [0], note: "절체절명(絶體絶命)이 맞음" },
+            { id: 141, text: "슬픔과 기쁨을 {0}하다.", options: ["동고동락", "동거동락"], answer: [0], note: "동고동락(同苦同樂)이 맞음" },
+            { id: 142, text: "사건의 {0}를 고백했다.", options: ["자초지종", "자초지정"], answer: [0], note: "자초지종(自初至終)이 맞음" },
+            { id: 143, text: "화면 {0}", options: ["캡쳐", "캡처"], answer: [1], note: "외래어 표기법 '캡처'" },
+            { id: 144, text: "레스토랑의 {0}", options: ["쉐프", "셰프"], answer: [1], note: "외래어 표기법 '셰프'" },
+            { id: 145, text: "영화 {0}", options: ["슈퍼맨", "수퍼맨"], answer: [0], note: "외래어 표기법 '슈퍼맨'" },
+            { id: 146, text: "{0} / {1}", options: ["프라이팬", "후라이팬"], options2: ["파이팅", "화이팅"], answer: [0, 0], note: "외래어 표기법 (프라이팬 / 파이팅)" },
+            { id: 147, text: "자동차 {0}", options: ["내비게이션", "네비게이션"], answer: [0], note: "외래어 표기법 '내비게이션'" },
+            { id: 148, text: "생일 {0}", options: ["케잌", "케익", "케이크"], answer: [2], note: "외래어 표기법 '케이크'" },
+            { id: 149, text: "바다에서 {0} 즐기기", options: ["스노쿨링", "스노클링"], answer: [1], note: "외래어 표기법 '스노클링'" },
+            { id: 150, text: "훌륭한 {0}", options: ["리더쉽", "리더십"], answer: [1], note: "외래어 표기법 '리더십'" }
+        ];
+
+        // App State
+        let currentMode = 'all'; // 'all', 'wrong', 'bookmark'
+        let currentList = [];
+        let currentIndex = 0;
+        let isShuffled = false;
+
+        // User Data in LocalStorage
+        let wrongSet = new Set(JSON.parse(localStorage.getItem('spelling_wrong') || '[]'));
+        let bookmarkSet = new Set(JSON.parse(localStorage.getItem('spelling_bookmark') || '[]'));
+
+        // Current Question Runtime State
+        let activeBlankIndex = 0;
+        let userSelections = [];
+        let isQuestionAnswered = false;
+
+        // DOM References
+        const sentenceContainer = document.getElementById('sentence-container');
+        const optionsContainer = document.getElementById('options-container');
+        const resultToast = document.getElementById('result-toast');
+        const quizIdxLabel = document.getElementById('quiz-idx');
+        const modeBadge = document.getElementById('mode-badge');
+        const btnBookmark = document.getElementById('btn-bookmark');
+        const progressBar = document.getElementById('progress-bar');
+        const emptyState = document.getElementById('empty-state');
+        const quizCard = document.getElementById('quiz-card');
+
+        // Init App
+        window.addEventListener('DOMContentLoaded', () => {
+            updateCounts();
+            setupModeList();
+            renderQuiz();
+
+            // Keyboard Listeners
+            window.addEventListener('keydown', handleKeyPress);
+        });
+
+        // Save State
+        function saveStorage() {
+            localStorage.setItem('spelling_wrong', JSON.stringify([...wrongSet]));
+            localStorage.setItem('spelling_bookmark', JSON.stringify([...bookmarkSet]));
+            updateCounts();
+        }
+
+        function updateCounts() {
+            document.getElementById('cnt-all').innerText = rawQuizData.length;
+            document.getElementById('cnt-wrong').innerText = wrongSet.size;
+            document.getElementById('cnt-bookmark').innerText = bookmarkSet.size;
+        }
+
+        function setupModeList() {
+            if (currentMode === 'all') {
+                currentList = [...rawQuizData];
+            } else if (currentMode === 'wrong') {
+                currentList = rawQuizData.filter(q => wrongSet.has(q.id));
+            } else if (currentMode === 'bookmark') {
+                currentList = rawQuizData.filter(q => bookmarkSet.has(q.id));
+            }
+
+            if (isShuffled) {
+                currentList.sort(() => Math.random() - 0.5);
+            }
+
+            currentIndex = 0;
+        }
+
+        function changeMode(mode) {
+            currentMode = mode;
+            
+            // Tab Styling
+            ['all', 'wrong', 'bookmark'].forEach(m => {
+                const btn = document.getElementById(`tab-${m}`);
+                if (m === mode) {
+                    btn.className = "px-3 py-1.5 rounded-lg text-indigo-600 bg-white shadow-sm font-bold transition-all";
+                } else {
+                    btn.className = "px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all flex items-center gap-1.5";
+                }
+            });
+
+            const modeNames = { all: '전체 모드', wrong: '오답노트 모드', bookmark: '즐겨찾기 모드' };
+            modeBadge.innerText = modeNames[mode];
+
+            setupModeList();
+            renderQuiz();
+        }
+
+        function toggleShuffle() {
+            isShuffled = document.getElementById('toggle-shuffle').checked;
+            setupModeList();
+            renderQuiz();
+        }
+
+        function resetData() {
+            if (confirm('모든 오답노트와 즐겨찾기 기록을 초기화하시겠습니까?')) {
+                wrongSet.clear();
+                bookmarkSet.clear();
+                saveStorage();
+                setupModeList();
+                renderQuiz();
+            }
+        }
+
+        function toggleCurrentBookmark() {
+            if (!currentList[currentIndex]) return;
+            const qId = currentList[currentIndex].id;
+            if (bookmarkSet.has(qId)) {
+                bookmarkSet.delete(qId);
+            } else {
+                bookmarkSet.add(qId);
+            }
+            saveStorage();
+            updateBookmarkButton(qId);
+            if (currentMode === 'bookmark' && !bookmarkSet.has(qId)) {
+                setupModeList();
+                renderQuiz();
+            }
+        }
+
+        function updateBookmarkButton(qId) {
+            if (bookmarkSet.has(qId)) {
+                btnBookmark.className = "text-2xl text-amber-400 hover:text-amber-500 transition-colors";
+            } else {
+                btnBookmark.className = "text-2xl text-slate-300 hover:text-amber-400 transition-colors";
+            }
+        }
+
+        // Render Quiz Item
+        function renderQuiz() {
+            resultToast.classList.add('hidden');
+            isQuestionAnswered = false;
+
+            if (currentList.length === 0) {
+                quizCard.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                
+                if (currentMode === 'wrong') {
+                    document.getElementById('empty-title').innerText = "오답노트 완파!";
+                    document.getElementById('empty-desc').innerText = "모든 오답을 맞혀 오답노트에서 모두 제거되었습니다.";
+                } else if (currentMode === 'bookmark') {
+                    document.getElementById('empty-title').innerText = "즐겨찾기가 없습니다";
+                    document.getElementById('empty-desc').innerText = "별 아이콘을 눌러 복습할 문제를 즐겨찾기에 담아보세요.";
+                }
+                progressBar.style.width = `100%`;
+                return;
+            }
+
+            quizCard.classList.remove('hidden');
+            emptyState.classList.add('hidden');
+
+            const item = currentList[currentIndex];
+            quizIdxLabel.innerText = `Q.${item.id} (${currentIndex + 1}/${currentList.length})`;
+            updateBookmarkButton(item.id);
+
+            // Calculate progress
+            const progress = ((currentIndex) / currentList.length) * 100;
+            progressBar.style.width = `${progress}%`;
+
+            // Reset blank states
+            activeBlankIndex = 0;
+            userSelections = [];
+
+            // Parse Sentence Blanks
+            const sentenceParts = item.text.split(/\{(\d+)\}/);
+            sentenceContainer.innerHTML = '';
+
+            let blankCount = 0;
+            sentenceParts.forEach((part, idx) => {
+                if (idx % 2 === 1) { // It's a blank index placeholder
+                    const blankIdx = parseInt(part);
+                    blankCount++;
+
+                    const blankBox = document.createElement('button');
+                    blankBox.id = `blank-${blankIdx}`;
+                    blankBox.className = `blank-box border-b-4 border-slate-300 px-3 py-1 min-w-[90px] font-bold text-slate-700 bg-slate-50 rounded-lg mx-1 inline-flex items-center justify-center cursor-default ${blankIdx === 0 ? 'active' : ''}`;
+                    blankBox.innerText = `( 선택 ${blankIdx + 1} )`;
+                    
+                    sentenceContainer.appendChild(blankBox);
+                } else {
+                    const textNode = document.createElement('span');
+                    textNode.innerText = part;
+                    sentenceContainer.appendChild(textNode);
+                }
+            });
+
+            renderOptions();
+        }
+
+        // Render Available Options for Active Blank
+        function renderOptions() {
+            const item = currentList[currentIndex];
+            optionsContainer.innerHTML = '';
+
+            // Get options array for the current active blank
+            let opts = item.options;
+            if (activeBlankIndex === 1 && item.options2) opts = item.options2;
+            if (activeBlankIndex === 2 && item.options3) opts = item.options3;
+
+            // Render Choice Buttons
+            opts.forEach((optText, optIdx) => {
+                const btn = document.createElement('button');
+                btn.onclick = () => selectOption(optIdx);
+                btn.className = "flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-xl transition-all font-bold text-slate-800 text-left group shadow-sm";
+                
+                btn.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-lg bg-slate-200 text-slate-700 font-mono text-xs flex items-center justify-center key-badge group-hover:bg-indigo-600 group-hover:text-white transition-colors">${optIdx + 1}</span>
+                        <span class="text-base">${optText}</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-xs text-slate-300 group-hover:text-indigo-400"></i>
+                `;
+                optionsContainer.appendChild(btn);
+            });
+
+            // If item supports multiple standard words (복수표준어) or as alternative
+            const isMultipleStandard = item.answer[0] === -1;
+            const multiBtn = document.createElement('button');
+            multiBtn.onclick = () => selectOption(-1);
+            multiBtn.className = `flex items-center justify-between px-4 py-3 rounded-xl transition-all font-bold text-left shadow-sm ${
+                isMultipleStandard 
+                ? 'bg-amber-50 border border-amber-200 text-amber-900 hover:bg-amber-100' 
+                : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
+            }`;
+
+            multiBtn.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-lg bg-amber-200 text-amber-800 font-mono text-xs flex items-center justify-center key-badge">0</span>
+                    <span class="text-sm">복수표준어 (둘 다 가능)</span>
+                </div>
+                <i class="fa-solid fa-check text-xs text-amber-500"></i>
+            `;
+            optionsContainer.appendChild(multiBtn);
+        }
+
+        // Handle Option Selection
+        function selectOption(selectedOptIdx) {
+            if (isQuestionAnswered) return;
+
+            const item = currentList[currentIndex];
+            userSelections.push(selectedOptIdx);
+
+            // Update UI for completed blank
+            const curBlankBox = document.getElementById(`blank-${activeBlankIndex}`);
+            if (curBlankBox) {
+                curBlankBox.classList.remove('active');
+                
+                // Show chosen text
+                let opts = item.options;
+                if (activeBlankIndex === 1 && item.options2) opts = item.options2;
+                if (activeBlankIndex === 2 && item.options3) opts = item.options3;
+
+                curBlankBox.innerText = selectedOptIdx === -1 ? "복수표준어" : opts[selectedOptIdx];
+            }
+
+            // Check if there are more blanks
+            activeBlankIndex++;
+            const totalBlanks = item.answer.length;
+
+            if (activeBlankIndex < totalBlanks) {
+                // Focus next blank automatically
+                const nextBlankBox = document.getElementById(`blank-${activeBlankIndex}`);
+                if (nextBlankBox) {
+                    nextBlankBox.classList.add('active');
+                }
+                renderOptions(); // Update options for next blank
+            } else {
+                // All blanks answered - evaluate correctness
+                evaluateAnswer();
+            }
+        }
+
+        // Evaluate Result
+        function evaluateAnswer() {
+            isQuestionAnswered = true;
+            const item = currentList[currentIndex];
+            
+            let isCorrect = true;
+
+            // Compare userSelections with item.answer
+            for (let i = 0; i < item.answer.length; i++) {
+                if (userSelections[i] !== item.answer[i]) {
+                    isCorrect = false;
+                    break;
+                }
+            }
+
+            // Apply visual badges on blanks
+            for (let i = 0; i < item.answer.length; i++) {
+                const box = document.getElementById(`blank-${i}`);
+                if (box) {
+                    if (userSelections[i] === item.answer[i]) {
+                        box.classList.add('solved-correct');
+                    } else {
+                        box.classList.add('solved-wrong');
+                    }
+                }
+            }
+
+            // Update local storage for wrong answers
+            if (!isCorrect) {
+                wrongSet.add(item.id);
+            } else {
+                // If answered correctly in 'wrong' mode, remove from wrongSet
+                if (currentMode === 'wrong') {
+                    wrongSet.delete(item.id);
+                }
+            }
+            saveStorage();
+
+            // Display Result Toast / Card
+            const toastIcon = document.getElementById('toast-icon');
+            const toastStatus = document.getElementById('toast-status');
+            const toastExp = document.getElementById('toast-explanation');
+
+            if (isCorrect) {
+                toastIcon.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i>`;
+                toastStatus.className = "font-bold text-base text-emerald-400 flex items-center gap-2";
+                toastStatus.innerText = "정답입니다!";
+            } else {
+                toastIcon.innerHTML = `<i class="fa-solid fa-circle-xmark text-rose-400"></i>`;
+                toastStatus.className = "font-bold text-base text-rose-400 flex items-center gap-2";
+                
+                // Construct correct answer summary
+                let correctStr = "";
+                item.answer.forEach((ans, idx) => {
+                    let opts = item.options;
+                    if (idx === 1 && item.options2) opts = item.options2;
+                    if (idx === 2 && item.options3) opts = item.options3;
+
+                    const ansText = ans === -1 ? "복수표준어" : opts[ans];
+                    correctStr += `${idx > 0 ? ' / ' : ''}${ansText}`;
+                });
+
+                toastStatus.innerText = `오답입니다! (정답: ${correctStr})`;
+            }
+
+            toastExp.innerText = item.note ? `💡 비고: ${item.note}` : '💡 올바른 맞춤법을 기억하세요!';
+            resultToast.classList.remove('hidden');
+        }
+
+        // Advance to Next Question
+        function nextQuestion() {
+            if (currentList.length === 0) return;
+
+            // If in wrong mode and standard question was correct, list size decreases
+            if (currentMode === 'wrong' && !wrongSet.has(currentList[currentIndex]?.id)) {
+                setupModeList();
+                if (currentIndex >= currentList.length) {
+                    currentIndex = 0;
+                }
+            } else {
+                currentIndex++;
+                if (currentIndex >= currentList.length) {
+                    currentIndex = 0; // Loop back or complete
+                }
+            }
+
+            renderQuiz();
+        }
+
+        // Global Key Press Shortcuts
+        function handleKeyPress(e) {
+            // Ignore shortcuts if result modal or inputs focused
+            if (e.key === 'Enter') {
+                if (isQuestionAnswered) {
+                    e.preventDefault();
+                    nextQuestion();
+                }
+                return;
+            }
+
+            if (isQuestionAnswered) return;
+
+            if (e.key === '1') {
+                selectOption(0);
+            } else if (e.key === '2') {
+                selectOption(1);
+            } else if (e.key === '3') {
+                const item = currentList[currentIndex];
+                let opts = item.options;
+                if (activeBlankIndex === 1 && item.options2) opts = item.options2;
+                if (activeBlankIndex === 2 && item.options3) opts = item.options3;
+
+                if (opts.length >= 3) {
+                    selectOption(2);
+                }
+            } else if (e.key === '0' || e.key === ' ') {
+                e.preventDefault();
+                selectOption(-1); // 복수표준어
+            }
+        }
+    </script>
+</body>
+</html>
