@@ -25,12 +25,12 @@
             border-color: #4f46e5;
             background-color: #eef2ff;
             color: #4f46e5;
-            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15);
-            animation: pulse-border 1.5s infinite;
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.2);
+            animation: pulse-border 1.2s infinite;
         }
         @keyframes pulse-border {
-            0%, 100% { border-color: #4f46e5; }
-            50% { border-color: #818cf8; }
+            0%, 100% { border-color: #4f46e5; transform: scale(1); }
+            50% { border-color: #818cf8; transform: scale(1.03); }
         }
         .blank-box.solved-correct {
             border-color: #10b981;
@@ -42,8 +42,41 @@
             background-color: #fef2f2;
             color: #b91c1c;
         }
+        .blank-box.active {
+            border-color: #4f46e5;
+            background-color: #eef2ff;
+            color: #4f46e5;
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.2);
+            transform: scale(1.05);
+            animation: pulse-border 1.5s infinite;
+        }
+        @keyframes pulse-border {
+            0%, 100% { border-color: #4f46e5; }
+            50% { border-color: #818cf8; }
+        }
+        .blank-box.solved-correct {
+            border-color: #10b981;
+            background-color: #ecfdf5;
+            color: #047857;
+            font-weight: 800;
+        }
+        .blank-box.solved-wrong {
+            border-color: #ef4444;
+            background-color: #fef2f2;
+            color: #b91c1c;
+            font-weight: 800;
+        }
         .key-badge {
-            box-shadow: 0 2px 0 rgba(0,0,0,0.15);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.12);
+        }
+        
+        /* Auto-next progress bar animation */
+        .timer-progress-active {
+            animation: timerProgress 1.5s linear forwards;
+        }
+        @keyframes timerProgress {
+            from { width: 0%; }
+            to { width: 100%; }
         }
     </style>
 </head>
@@ -154,8 +187,8 @@
     <footer class="bg-white border-t border-slate-200 py-4 mt-6">
         <div class="max-w-4xl mx-auto px-4 text-center text-xs text-slate-400 font-medium flex flex-wrap justify-center gap-4">
             <span><kbd class="px-1.5 py-0.5 bg-slate-100 border rounded font-mono text-slate-600">1</kbd> <kbd class="px-1.5 py-0.5 bg-slate-100 border rounded font-mono text-slate-600">2</kbd> 선택지</span>
-            <span><kbd class="px-1.5 py-0.5 bg-slate-100 border rounded font-mono text-slate-600">0</kbd> / <kbd class="px-1.5 py-0.5 bg-slate-100 border rounded font-mono text-slate-600">Space</kbd> 복수표준어</span>
-            <span><kbd class="px-1.5 py-0.5 bg-slate-100 border rounded font-mono text-slate-600">Enter</kbd> 다음 문제</span>
+            <span><kbd class="px-1.5 py-0.5 bg-slate-100 border rounded font-mono text-slate-600">0</kbd> 복수표준어</span>
+            <span><kbd class="px-1.5 py-0.5 bg-slate-100 border rounded font-mono text-slate-600">Enter</kbd> / <kbd class="px-1.5 py-0.5 bg-slate-100 border rounded font-mono text-slate-600">Space</kbd> 바로 다음 문제</span>
         </div>
     </footer>
 
@@ -269,7 +302,7 @@
             { id: 104, text: "{0}이 넓다.", options: ["오지랖", "오지랍"], answer: [0], note: "오지랖이 맞는 표기" },
             { id: 105, text: "책상을 새것으로 {0}하다.", options: ["갈음", "가름"], answer: [0], note: "대체함은 '갈음'" },
             { id: 106, text: "{0} 한 시간 정도 걸린다.", options: ["겉잡아서", "걷잡아서"], answer: [0], note: "대강 추어올려 셈함은 '겉잡다'" },
-            { id: 107, text: "눈물이 {0} 수 없이 흐르다.", options: ["걷잡을", "겉잡을"], answer: [0], note: "거두어 다스리거나 억제함은 '걷잡다'" },
+            { id: 107, text: "눈물이 {0} 수 없이 흘러다.", options: ["걷잡을", "겉잡을"], answer: [0], note: "거두어 다스리거나 억제함은 '걷잡다'" },
             { id: 108, text: "쓸데없는 {0}를 늘어놓다.", options: ["넉두리", "넋두리"], answer: [1], note: "넋두리가 올바른 표기" },
             { id: 109, text: "{0} 잘 정리해라.", options: ["아무튼", "아뭏든"], answer: [0], note: "아무튼이 표준어" },
             { id: 110, text: "{0} 결과는 성공적이다.", options: ["어쨌든", "어쨋든"], answer: [0], note: "어쨌든이 표준어" },
@@ -329,6 +362,7 @@
         let activeBlankIndex = 0;
         let userSelections = [];
         let isQuestionAnswered = false;
+        let autoAdvanceTimer = null;
 
         // DOM References
         const sentenceContainer = document.getElementById('sentence-container');
@@ -442,6 +476,11 @@
 
         // Render Quiz Item
         function renderQuiz() {
+            if (autoAdvanceTimer) {
+                clearTimeout(autoAdvanceTimer);
+                autoAdvanceTimer = null;
+            }
+
             resultToast.classList.add('hidden');
             isQuestionAnswered = false;
 
@@ -479,16 +518,16 @@
             const sentenceParts = item.text.split(/\{(\d+)\}/);
             sentenceContainer.innerHTML = '';
 
-            let blankCount = 0;
             sentenceParts.forEach((part, idx) => {
                 if (idx % 2 === 1) { // It's a blank index placeholder
                     const blankIdx = parseInt(part);
-                    blankCount++;
 
                     const blankBox = document.createElement('button');
                     blankBox.id = `blank-${blankIdx}`;
-                    blankBox.className = `blank-box border-b-4 border-slate-300 px-3 py-1 min-w-[90px] font-bold text-slate-700 bg-slate-50 rounded-lg mx-1 inline-flex items-center justify-center cursor-default ${blankIdx === 0 ? 'active' : ''}`;
-                    blankBox.innerText = `( 선택 ${blankIdx + 1} )`;
+                    blankBox.className = `blank-box border-2 border-dashed border-indigo-400 px-4 py-1.5 min-w-[56px] font-extrabold text-indigo-600 bg-indigo-50/60 rounded-xl mx-1 inline-flex items-center justify-center cursor-default ${blankIdx === 0 ? 'active' : ''}`;
+                    
+                    // Render '?' for blank
+                    blankBox.innerHTML = `<span class="blank-text text-indigo-500 font-extrabold"><i class="fa-solid fa-question text-lg"></i></span>`;
                     
                     sentenceContainer.appendChild(blankBox);
                 } else {
@@ -558,13 +597,16 @@
             const curBlankBox = document.getElementById(`blank-${activeBlankIndex}`);
             if (curBlankBox) {
                 curBlankBox.classList.remove('active');
+                curBlankBox.classList.remove('border-dashed');
+                curBlankBox.classList.add('border-solid');
                 
-                // Show chosen text
+                // Show chosen text on top of the slot
                 let opts = item.options;
                 if (activeBlankIndex === 1 && item.options2) opts = item.options2;
                 if (activeBlankIndex === 2 && item.options3) opts = item.options3;
 
-                curBlankBox.innerText = selectedOptIdx === -1 ? "복수표준어" : opts[selectedOptIdx];
+                const chosenText = selectedOptIdx === -1 ? "복수표준어" : opts[selectedOptIdx];
+                curBlankBox.innerHTML = `<span class="blank-text text-slate-800 font-extrabold">${chosenText}</span>`;
             }
 
             // Check if there are more blanks
@@ -651,10 +693,20 @@
 
             toastExp.innerText = item.note ? `💡 비고: ${item.note}` : '💡 올바른 맞춤법을 기억하세요!';
             resultToast.classList.remove('hidden');
+
+            // Set 1-second timer to auto advance to next question
+            autoAdvanceTimer = setTimeout(() => {
+                nextQuestion();
+            }, 1000);
         }
 
         // Advance to Next Question
         function nextQuestion() {
+            if (autoAdvanceTimer) {
+                clearTimeout(autoAdvanceTimer);
+                autoAdvanceTimer = null;
+            }
+
             if (currentList.length === 0) return;
 
             // If in wrong mode and standard question was correct, list size decreases
@@ -675,8 +727,7 @@
 
         // Global Key Press Shortcuts
         function handleKeyPress(e) {
-            // Ignore shortcuts if result modal or inputs focused
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' || e.key === ' ') {
                 if (isQuestionAnswered) {
                     e.preventDefault();
                     nextQuestion();
@@ -699,7 +750,7 @@
                 if (opts.length >= 3) {
                     selectOption(2);
                 }
-            } else if (e.key === '0' || e.key === ' ') {
+            } else if (e.key === '0') {
                 e.preventDefault();
                 selectOption(-1); // 복수표준어
             }
